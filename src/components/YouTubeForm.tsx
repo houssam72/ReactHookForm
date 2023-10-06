@@ -1,6 +1,6 @@
 import { DevTool } from "@hookform/devtools";
 import { useEffect } from "react";
-import { useFieldArray, useForm } from "react-hook-form";
+import { FieldErrors, useFieldArray, useForm } from "react-hook-form";
 
 let renderCount = 0;
 
@@ -35,18 +35,39 @@ export const YouTubeForm = () => {
       age: 0,
       dob: new Date(),
     },
+    // mode: "onSubmit",
   });
 
   const {
     register,
     control,
     handleSubmit,
-    formState: { errors },
+    formState: {
+      errors,
+      touchedFields,
+      dirtyFields,
+      isDirty,
+      isValid,
+      isSubmitting,
+      isSubmitted,
+      isSubmitSuccessful,
+      submitCount,
+    },
     watch,
     getValues,
     setValue,
+    reset,
+    trigger,
   } = form;
 
+  console.log("Toued and dirty", touchedFields, dirtyFields, isDirty);
+  console.log(
+    "Submit",
+    isSubmitting,
+    isSubmitted,
+    isSubmitSuccessful,
+    submitCount
+  );
   const { fields, append, remove } = useFieldArray({
     name: "phNumbers",
     control,
@@ -54,13 +75,23 @@ export const YouTubeForm = () => {
 
   // useEffect((): any => {
   //   const subscription = watch((value) => {
-  //     console.log(value);
+  //     console.log("Watch", value);
   //   });
   //   return () => subscription.unsubscribe;
   // }, [watch]);
 
+  useEffect(() => {
+    if (isSubmitSuccessful) {
+      reset();
+    }
+  }, [isSubmitSuccessful]);
+
   const onSubmit = (data: FormValues) => {
     console.log("Form submitted", data);
+  };
+
+  const onError = (errors: FieldErrors<FormValues>) => {
+    console.log("Form errors", errors);
   };
 
   const handleGetValues = () => {
@@ -80,7 +111,7 @@ export const YouTubeForm = () => {
     <div>
       <h1>YouTube Form {renderCount / 2}</h1>
 
-      <form onSubmit={handleSubmit(onSubmit)}>
+      <form onSubmit={handleSubmit(onSubmit, onError)}>
         <div className="form-control">
           <label htmlFor="username">Username</label>
           <input
@@ -117,6 +148,13 @@ export const YouTubeForm = () => {
                     "This domain is not supported"
                   );
                 },
+                emailAvialable: async (fieldValue) => {
+                  const response = await fetch(
+                    `https://jsonplaceholder.typicode.com/users?email=${fieldValue}`
+                  );
+                  const data = await response.json();
+                  return data.length == 0 || "Email already exists";
+                },
               },
             })}
           />
@@ -139,27 +177,25 @@ export const YouTubeForm = () => {
         </div>
         <div className="form-control">
           <label htmlFor="Twitter">twitter</label>
-          <input type="text" id="channel" {...register("social.twitter")} />
+          <input
+            type="text"
+            {...register("social.twitter", {
+              disabled: true,
+              required: "Enter twitter profile",
+            })}
+          />
         </div>
         <div className="form-control">
           <label htmlFor="facebook">facebook</label>
-          <input type="text" id="channel" {...register("social.facebook")} />
+          <input type="text" {...register("social.facebook")} />
         </div>
         <div className="form-control">
           <label htmlFor="primary-phone">Primary phone number</label>
-          <input
-            type="text"
-            id="primary-phone"
-            {...register("phoneNumbers.0")}
-          />
+          <input type="text" {...register("phoneNumbers.0")} />
         </div>
         <div className="form-control">
           <label htmlFor="secondary-phone">Secondary phone number</label>
-          <input
-            type="text"
-            id="secondary-phone"
-            {...register("phoneNumbers.1")}
-          />
+          <input type="text" {...register("phoneNumbers.1")} />
         </div>
         <div className="form-control">
           <label htmlFor="phoneNumbers">List of phone numbers</label>
@@ -211,14 +247,34 @@ export const YouTubeForm = () => {
               },
             })}
           />
+          <p className="error">{errors.dob?.message}</p>
         </div>
 
-        <button>Submit</button>
+        <button
+          type="button"
+          onClick={() => {
+            reset();
+          }}
+        >
+          Reset
+        </button>
+
+        <button
+        disabled={!isValid}
+        >
+          Submit
+        </button>
         <button type="button" onClick={handleGetValues}>
           Get values
         </button>
         <button type="button" onClick={handleSetValues}>
           Set values
+        </button>
+        <button type="button" onClick={() => trigger()}>
+          Trigger All
+        </button>
+        <button type="button" onClick={() => trigger("channel")}>
+          Trigger channel
         </button>
       </form>
       <DevTool control={control} />
